@@ -80,7 +80,7 @@ export const speakSageMessage = async (text: string) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `[Deep, calm, mystical male voice] ${text}` }] }],
+      contents: [{ parts: [{ text: `[Calm, deep mystical voice] ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -100,39 +100,45 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    // 1.5배속 정도로 조절하여 아티팩트 방지
-    audio.playbackRate = 1.5; 
+    audio.playbackRate = 1.4; // 속도를 살짝 낮추어 왜곡 방지
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
     
-    // 1. 고주파 노이즈 제거를 위한 필터
-    const filter = audioCtx.createBiquadFilter();
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(8000, audioCtx.currentTime); // 8kHz 이상 차단
+    // 1. 고주파 필터 (화이트 노이즈 억제)
+    const lowpass = audioCtx.createBiquadFilter();
+    lowpass.type = 'lowpass';
+    lowpass.frequency.setValueAtTime(5500, audioCtx.currentTime); 
 
-    // 2. 소리 크기 평준화를 위한 컴프레서
+    // 2. 저주파 보강 (묵직한 느낌 추가)
+    const lowshelf = audioCtx.createBiquadFilter();
+    lowshelf.type = 'lowshelf';
+    lowshelf.frequency.setValueAtTime(250, audioCtx.currentTime);
+    lowshelf.gain.setValueAtTime(4, audioCtx.currentTime);
+
+    // 3. 다이내믹 컴프레서 (볼륨 튀는 현상 방지)
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-24, audioCtx.currentTime); 
-    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
-    compressor.ratio.setValueAtTime(4, audioCtx.currentTime); 
-    compressor.attack.setValueAtTime(0.01, audioCtx.currentTime);
-    compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+    compressor.threshold.setValueAtTime(-30, audioCtx.currentTime); 
+    compressor.knee.setValueAtTime(40, audioCtx.currentTime);
+    compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+    compressor.attack.setValueAtTime(0.005, audioCtx.currentTime);
+    compressor.release.setValueAtTime(0.2, audioCtx.currentTime);
 
-    // 3. 클리핑(지지직거림) 방지를 위해 게인 하향 조정
+    // 4. 게인 조절 (클리핑 방지를 위해 안전한 0.6으로 설정)
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.8; // 1.0 미만으로 설정하여 왜곡 방지
+    gainNode.gain.value = 0.6; 
     
-    source.connect(filter);
-    filter.connect(compressor);
+    source.connect(lowpass);
+    lowpass.connect(lowshelf);
+    lowshelf.connect(compressor);
     compressor.connect(gainNode);
     gainNode.connect(audioCtx.destination);
     
     audio.play();
     audio.onended = () => {
       URL.revokeObjectURL(url);
-      setTimeout(() => audioCtx.close(), 200);
+      setTimeout(() => audioCtx.close(), 500);
     };
   } catch (error) {
     console.error("TTS Error:", error);
