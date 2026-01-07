@@ -6,7 +6,8 @@ import { soundService } from './services/soundService';
 import GuessChart from './components/GuessChart';
 
 const MAX_ATTEMPTS = 10;
-const APP_VERSION = "v13.0.0-PRODUCTION-STABLE"; 
+// 배포 성공을 명확히 확인하기 위해 버전을 v14.0.0으로 업데이트합니다.
+const APP_VERSION = "v14.0.0-STABLE-REFINED"; 
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -33,7 +34,7 @@ const App: React.FC = () => {
     if (!isBgmStarted) {
       soundService.startBGM();
       setIsBgmStarted(true);
-      // 첫 인사 실행
+      // 첫 인사 실행 (Vercel 환경 변수 process.env.API_KEY 자동 사용)
       try {
         const feedback = await getSageFeedback(0, gameState.target, 0, []);
         setGameState(prev => ({ ...prev, message: feedback.text }));
@@ -217,7 +218,7 @@ const App: React.FC = () => {
           <div className="h-[1px] bg-slate-900 flex-1 mx-12"></div>
           <div className="flex gap-4 items-center">
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></div>
-            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">DEPLOY: STABLE</p>
+            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">VERSION: 14.0.0 STABLE</p>
           </div>
         </footer>
       </div>
