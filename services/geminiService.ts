@@ -100,25 +100,32 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    audio.playbackRate = 1.6; // 약간 속도를 늦추어 아티팩트 감소
+    // 1.5배속 정도로 조절하여 아티팩트 방지
+    audio.playbackRate = 1.5; 
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
     
-    // 노이즈(클리핑) 제거를 위한 다이내믹 컴프레서 최적화
-    const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-12, audioCtx.currentTime); // 임계값을 높여 덜 억눌리게 함
-    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
-    compressor.ratio.setValueAtTime(4, audioCtx.currentTime); // 압축비를 낮추어 더 자연스럽게
-    compressor.attack.setValueAtTime(0.01, audioCtx.currentTime);
-    compressor.release.setValueAtTime(0.2, audioCtx.currentTime);
+    // 1. 고주파 노이즈 제거를 위한 필터
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(8000, audioCtx.currentTime); // 8kHz 이상 차단
 
+    // 2. 소리 크기 평준화를 위한 컴프레서
+    const compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-24, audioCtx.currentTime); 
+    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
+    compressor.ratio.setValueAtTime(4, audioCtx.currentTime); 
+    compressor.attack.setValueAtTime(0.01, audioCtx.currentTime);
+    compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+
+    // 3. 클리핑(지지직거림) 방지를 위해 게인 하향 조정
     const gainNode = audioCtx.createGain();
-    // 왜곡 방지를 위해 게인을 1.2로 하향 조정
-    gainNode.gain.value = 1.2; 
+    gainNode.gain.value = 0.8; // 1.0 미만으로 설정하여 왜곡 방지
     
-    source.connect(compressor);
+    source.connect(filter);
+    filter.connect(compressor);
     compressor.connect(gainNode);
     gainNode.connect(audioCtx.destination);
     

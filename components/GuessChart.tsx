@@ -28,12 +28,12 @@ const CustomDot = (props: any) => {
   
   return (
     <g>
-      {/* 바깥쪽 후광 효과 */}
-      <circle cx={cx} cy={cy} r={12} fill={color} opacity={0.3} className="animate-pulse" />
+      {/* 바깥쪽 후광 효과 (애니메이션 포함) */}
+      <circle cx={cx} cy={cy} r={14} fill={color} opacity={0.25} className="animate-pulse" />
       {/* 메인 점 */}
-      <circle cx={cx} cy={cy} r={7} fill={color} stroke="#0f172a" strokeWidth={2} />
-      {/* 내부 하이라이트 */}
-      <circle cx={cx} cy={cy} r={3} fill="#ffffff" opacity={0.4} />
+      <circle cx={cx} cy={cy} r={8} fill={color} stroke="#0f172a" strokeWidth={2.5} />
+      {/* 내부 하이라이트 (입체감) */}
+      <circle cx={cx} cy={cy} r={3} fill="#ffffff" opacity={0.5} />
     </g>
   );
 };
@@ -67,10 +67,10 @@ const GuessChart: React.FC<GuessChartProps> = ({ guesses, target, showTarget }) 
             labelStyle={{ color: '#94a3b8', marginBottom: '4px', fontSize: '12px' }}
             formatter={(value, name, props: any) => {
               const dir = props.payload.direction;
-              const dirText = dir === 'correct' ? '정답' : dir === 'high' ? '너무 높음' : '너무 낮음';
+              const dirText = dir === 'correct' ? '정답' : dir === 'high' ? '높음' : '낮음';
               return [`${value} (${dirText})`, '주파수'];
             }}
-            labelFormatter={(label) => `${label}회차 공명 결과`}
+            labelFormatter={(label) => `${label}회차 공명`}
           />
           {showTarget && (
             <ReferenceLine 
@@ -87,8 +87,8 @@ const GuessChart: React.FC<GuessChartProps> = ({ guesses, target, showTarget }) 
             stroke="rgba(148, 163, 184, 0.2)" 
             strokeWidth={2} 
             dot={<CustomDot />}
-            activeDot={{ r: 9, strokeWidth: 2, fill: '#fff', stroke: '#1e293b' }}
-            animationDuration={800}
+            activeDot={{ r: 10, strokeWidth: 2, fill: '#fff', stroke: '#1e293b' }}
+            animationDuration={1000}
           />
         </LineChart>
       </ResponsiveContainer>
