@@ -2,8 +2,7 @@
 import { GoogleGenAI, Modality } from "@google/genai";
 import { SageResponse } from "../types";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
-
+// 유틸리티: Base64 디코딩
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -14,16 +13,15 @@ function decode(base64: string) {
   return bytes;
 }
 
+// 유틸리티: WAV 인코딩
 function encodeWAV(samples: Int16Array, sampleRate: number) {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
-
   const writeString = (offset: number, string: string) => {
     for (let i = 0; i < string.length; i++) {
       view.setUint8(offset + i, string.charCodeAt(i));
     }
   };
-
   writeString(0, 'RIFF');
   view.setUint32(4, 36 + samples.length * 2, true);
   writeString(8, 'WAVE');
@@ -37,11 +35,9 @@ function encodeWAV(samples: Int16Array, sampleRate: number) {
   view.setUint16(34, 16, true);
   writeString(36, 'data');
   view.setUint32(40, samples.length * 2, true);
-
   for (let i = 0; i < samples.length; i++) {
     view.setInt16(44 + i * 2, samples[i], true);
   }
-
   return new Blob([view], { type: 'audio/wav' });
 }
 
@@ -51,6 +47,9 @@ export const getSageFeedback = async (
   attemptCount: number,
   history: number[]
 ): Promise<{ text: string }> => {
+  // 호출 시점에 인스턴스 생성 (Vercel 환경 변수 참조 최적화)
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+  
   const isCorrect = guess === target;
   const isHigh = guess > target;
   
@@ -59,7 +58,8 @@ export const getSageFeedback = async (
     Act as "The Nebula Sage" (성운의 현자). 
     Provide mystical and brief feedback in KOREAN. 
     Use formal/archaic tone (~소, ~구려, ~도다). 
-    Max 2 sentences.
+    Max 2 sentences. 
+    Keep it wise and mysterious.
   `;
 
   try {
@@ -69,6 +69,7 @@ export const getSageFeedback = async (
     });
     return { text: response.text || "우주의 기운이 심상치 않구려..." };
   } catch (error) {
+    console.error("Gemini API Error:", error);
     return { 
       text: isCorrect ? "승리는 그대의 것이도다." : 
             isHigh ? "에너지가 너무 높이 솟구쳤소." : "시야가 너무 낮구려." 
@@ -78,9 +79,12 @@ export const getSageFeedback = async (
 
 export const speakSageMessage = async (text: string) => {
   try {
+    // 호출 시점에 인스턴스 생성
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `[Deep mystical wise voice] ${text}` }] }],
+      contents: [{ parts: [{ text: `[Mystical ancient voice, deep and resonant] ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -100,26 +104,22 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    audio.playbackRate = 1.4; 
+    audio.playbackRate = 1.3; 
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
     
-    // 1. 노이즈 제거용 필터 (5000Hz 이상 부드럽게 깎음)
     const lowpass = audioCtx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.setValueAtTime(5000, audioCtx.currentTime); 
-    lowpass.Q.setValueAtTime(0.5, audioCtx.currentTime);
+    lowpass.frequency.setValueAtTime(4000, audioCtx.currentTime); 
 
-    // 2. 컴프레서 (소리가 튀는 피크 제거)
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-32, audioCtx.currentTime); 
+    compressor.threshold.setValueAtTime(-40, audioCtx.currentTime); 
     compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
 
-    // 3. 최종 게인 (노이즈 방지를 위해 0.55로 설정)
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.55; 
+    gainNode.gain.value = 0.45; 
     
     source.connect(lowpass);
     lowpass.connect(compressor);
