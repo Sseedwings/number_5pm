@@ -5,8 +5,8 @@ import { soundService } from './services/soundService';
 import GuessChart from './components/GuessChart';
 
 const MAX_ATTEMPTS = 10;
-// 배포가 정상적으로 반영되었는지 확인하기 위해 버전을 v16.0.0으로 업데이트합니다.
-const APP_VERSION = "v16.0.0-PRO-ROBUST"; 
+// 배포 정상 반영 확인을 위한 버전 업데이트
+const APP_VERSION = "v17.0.0-PRO-FINAL"; 
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -33,13 +33,13 @@ const App: React.FC = () => {
     if (!isBgmStarted) {
       soundService.startBGM();
       setIsBgmStarted(true);
-      // 첫 인사 실행 (Vercel 환경 변수 process.env.API_KEY 자동 사용)
+      // 첫 인사 실행 (process.env.API_KEY 자동 주입)
       try {
         const feedback = await getSageFeedback(0, gameState.target, 0, []);
         setGameState(prev => ({ ...prev, message: feedback.text }));
         speakSageMessage(feedback.text);
       } catch (e) { 
-        console.error("Sage connection error:", e); 
+        console.error("Sage resonance error:", e); 
       }
     }
   };
@@ -82,7 +82,7 @@ const App: React.FC = () => {
     const hasLost = !hasWon && updatedGuesses.length >= gameState.maxAttempts;
     const newStatus = hasWon ? 'won' : (hasLost ? 'lost' : 'playing');
 
-    // 피드백 요청
+    // 피드백 요청 (내부적으로 500/429 에러 대응 로직 포함)
     const feedback = await getSageFeedback(
       guessVal, 
       gameState.target, 
@@ -107,7 +107,7 @@ const App: React.FC = () => {
       else soundService.playLowHint();
     }
 
-    // TTS 음성 출력 (내부적으로 Quota 에러 발생 시 무시됨)
+    // TTS 음성 출력 (에러 시 조용히 넘어가도록 설계됨)
     speakSageMessage(feedback.text);
   };
 
@@ -219,7 +219,7 @@ const App: React.FC = () => {
           <div className="h-[1px] bg-slate-900 flex-1 mx-12"></div>
           <div className="flex gap-4 items-center">
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></div>
-            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">VERSION: 16.0.0 PRO</p>
+            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">VERSION: 17.0.0 PRO</p>
           </div>
         </footer>
       </div>

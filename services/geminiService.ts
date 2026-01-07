@@ -11,7 +11,7 @@ function decode(base64: string) {
   return bytes;
 }
 
-// 유틸리티: WAV 인코딩
+// 유틸리티: WAV 인코딩 (PCM to WAV)
 function encodeWAV(samples: Int16Array, sampleRate: number) {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
@@ -40,22 +40,24 @@ function encodeWAV(samples: Int16Array, sampleRate: number) {
 }
 
 /**
- * 지수 백오프를 포함한 재시도 헬퍼 함수
+ * 지수 백오프(Exponential Backoff)를 적용한 강력한 재시도 메커니즘
  */
-const retry = async <T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> => {
+const robustRetry = async <T>(fn: () => Promise<T>, maxRetries = 3): Promise<T> => {
   let lastError: any;
   for (let i = 0; i <= maxRetries; i++) {
     try {
       return await fn();
     } catch (error: any) {
       lastError = error;
-      // 429(Quota) 또는 500(Internal) 에러인 경우 재시도
-      const isRetryable = error?.status === 429 || error?.status === 500 || 
-                         error?.message?.includes("500") || error?.message?.includes("429");
-      
-      if (i < maxRetries && isRetryable) {
-        const delay = 1500 * (i + 1);
-        console.warn(`API error (${error?.status}). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+      // 429(할당량 초과) 및 500(서버 내부 오류) 감지
+      const errorMsg = error?.message || "";
+      const isQuotaError = error?.status === 429 || errorMsg.includes("429") || errorMsg.includes("quota");
+      const isInternalError = error?.status === 500 || errorMsg.includes("500") || errorMsg.includes("INTERNAL");
+
+      if (i < maxRetries && (isQuotaError || isInternalError)) {
+        // 시도 횟수에 따라 지연 시간 증가 (1.5초, 3초, 4.5초...)
+        const delay = (isQuotaError ? 3000 : 1000) * (i + 1);
+        console.warn(`Resonance failed (${error?.status || 'Error'}). Re-tuning in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
         await new Promise(r => setTimeout(r, delay));
         continue;
       }
@@ -66,7 +68,7 @@ const retry = async <T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> => {
 };
 
 /**
- * 성운의 현자로부터 텍스트 피드백을 생성합니다.
+ * 성운의 현자로부터 텍스트 피드백 생성
  */
 export const getSageFeedback = async (
   guess: number, 
@@ -90,29 +92,32 @@ export const getSageFeedback = async (
     Keep it wise and mysterious.`;
 
   try {
-    const response = await retry(() => ai.models.generateContent({
+    const response = await robustRetry(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
     }));
     return { text: response.text || "우주의 기운이 심상치 않구려..." };
   } catch (error) {
     console.error("Gemini API Error (Text):", error);
-    if (isStart) return { text: "성운의 입구에 오신 것을 환영하오." };
+    // 에러 발생 시 사용자 경험을 위해 기본 응답 제공
+    if (isStart) return { text: "성운의 입구에 오신 것을 환영하오. 탐색을 시작하시오." };
     return { 
-      text: isCorrect ? "승리는 그대의 것이도다." : 
-            isHigh ? "에너지가 너무 높이 솟구쳤소." : "시야가 너무 낮구려." 
+      text: isCorrect ? "진실의 주파수를 찾아내었구려. 승리했소!" : 
+            isHigh ? "입력된 주파수가 너무 높구려. 조금 더 낮추어 보시오." : 
+            "주파수가 너무 낮소. 더 높게 공명해 보시오." 
     };
   }
 };
 
 /**
- * 성운의 현자 목소리로 텍스트를 음성 변환합니다.
+ * 성운의 현자 목소리로 텍스트를 음성 변환 (TTS)
  */
 export const speakSageMessage = async (text: string) => {
   try {
+    // API 키는 항상 process.env.API_KEY에서 가져옴
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
-    const response = await retry(() => ai.models.generateContent({
+    const response = await robustRetry(() => ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `[Mystical ancient voice, deep and resonant] ${text}` }] }],
       config: {
@@ -123,7 +128,7 @@ export const speakSageMessage = async (text: string) => {
           },
         },
       },
-    }));
+    }), 1); // TTS는 재시도 횟수를 줄여서 반응성 유지
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) return;
@@ -134,12 +139,13 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    audio.playbackRate = 2.0; 
+    audio.playbackRate = 2.0; // 신비로운 속도감 유지
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
     
+    // 오디오 필터: 신비로운 느낌 추가
     const lowpass = audioCtx.createBiquadFilter();
     lowpass.type = 'lowpass';
     lowpass.frequency.setValueAtTime(4500, audioCtx.currentTime); 
@@ -149,7 +155,7 @@ export const speakSageMessage = async (text: string) => {
     compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
 
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.6; 
+    gainNode.gain.value = 0.65; 
     
     source.connect(lowpass);
     lowpass.connect(compressor);
@@ -162,7 +168,7 @@ export const speakSageMessage = async (text: string) => {
       setTimeout(() => audioCtx.close(), 1000);
     };
   } catch (error) {
-    // TTS 에러(주로 할당량 초과)는 경고만 띄우고 게임은 계속 진행되도록 함
-    console.warn("TTS Service currently unavailable (likely quota exceeded).", error);
+    // 429(할당량 초과) 발생 시 게임 플레이 방해 없이 콘솔에만 기록
+    console.warn("Sage's voice is currently echoing in silence (TTS Quota Exceeded).", error);
   }
 };
