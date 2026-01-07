@@ -43,7 +43,6 @@ function encodeWAV(samples: Int16Array, sampleRate: number) {
 
 /**
  * 성운의 현자로부터 텍스트 피드백을 생성합니다.
- * Vercel 환경 변수인 process.env.API_KEY를 자동으로 사용합니다.
  */
 export const getSageFeedback = async (
   guess: number, 
@@ -51,7 +50,6 @@ export const getSageFeedback = async (
   attemptCount: number,
   history: number[]
 ): Promise<{ text: string }> => {
-  // 호출 시점에 새 인스턴스 생성 (Vercel 환경 변수 참조 보장)
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   
   const isCorrect = guess === target;
@@ -59,12 +57,12 @@ export const getSageFeedback = async (
   const isStart = attemptCount === 0;
   
   const prompt = isStart 
-    ? `Act as "The Nebula Sage" (성운의 현자). User just entered the realm. Greet them mystically in KOREAN. Formal/archaic tone (~소, ~구려, ~도다). Max 2 sentences.`
+    ? `Act as "The Nebula Sage" (성운의 현자). User just entered. Greet them mystically in KOREAN. Formal/archaic tone (~소, ~구려, ~도다). Max 1 sentence.`
     : `The user is playing a number guessing game (1-100). Secret: ${target}, Guess: ${guess}, Attempt: ${attemptCount}.
     Act as "The Nebula Sage" (성운의 현자). 
     Provide mystical and brief feedback in KOREAN. 
     Use formal/archaic tone (~소, ~구려, ~도다). 
-    Max 2 sentences. 
+    Max 1 sentence. 
     Keep it wise and mysterious.`;
 
   try {
@@ -75,7 +73,7 @@ export const getSageFeedback = async (
     return { text: response.text || "우주의 기운이 심상치 않구려..." };
   } catch (error) {
     console.error("Gemini API Error:", error);
-    if (isStart) return { text: "성운의 입구에 오신 것을 환영하오. 숫자 탐구를 시작해보세." };
+    if (isStart) return { text: "성운의 입구에 오신 것을 환영하오." };
     return { 
       text: isCorrect ? "승리는 그대의 것이도다." : 
             isHigh ? "에너지가 너무 높이 솟구쳤소." : "시야가 너무 낮구려." 
@@ -85,7 +83,7 @@ export const getSageFeedback = async (
 
 /**
  * 성운의 현자 목소리로 텍스트를 음성 변환합니다.
- * 나레이션 속도를 더 빠르게 조정하였습니다.
+ * 나레이션 속도를 2.0으로 상향 조정하였습니다.
  */
 export const speakSageMessage = async (text: string) => {
   try {
@@ -113,8 +111,8 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    // 나레이션 속도를 1.6으로 상향 조정 (사용자 요청: 더 빠르게)
-    audio.playbackRate = 1.6; 
+    // 나레이션 속도 2.0 (매우 빠름)
+    audio.playbackRate = 2.0; 
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -129,7 +127,7 @@ export const speakSageMessage = async (text: string) => {
     compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
 
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.55; 
+    gainNode.gain.value = 0.6; 
     
     source.connect(lowpass);
     lowpass.connect(compressor);
