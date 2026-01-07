@@ -6,7 +6,7 @@ import { soundService } from './services/soundService';
 import GuessChart from './components/GuessChart';
 
 const MAX_ATTEMPTS = 10;
-const APP_VERSION = "v1.2.2-stable"; // 업데이트 확인용 버전
+const APP_VERSION = "v1.2.3-release"; // 업데이트 확인용 버전
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
