@@ -33,7 +33,6 @@ class SoundService {
     osc.stop(this.ctx.currentTime + duration);
   }
 
-  // 배경음악 시작 (웅장한 앰비언트 사운드)
   startBGM() {
     if (this.isBgmPlaying) return;
     this.initCtx();
@@ -42,9 +41,9 @@ class SoundService {
     this.isBgmPlaying = true;
     this.bgmGain = this.ctx.createGain();
     
-    // 배경음악 볼륨을 0.6으로 추가 상향하여 몰입감 극대화
+    // 배경음악 볼륨을 0.7로 대폭 상향
     this.bgmGain.gain.setValueAtTime(0, this.ctx.currentTime);
-    this.bgmGain.gain.linearRampToValueAtTime(0.6, this.ctx.currentTime + 4);
+    this.bgmGain.gain.linearRampToValueAtTime(0.7, this.ctx.currentTime + 3);
     this.bgmGain.connect(this.ctx.destination);
 
     const createDrone = (freq: number, vol: number = 0.05, detune: number = 0) => {
@@ -60,87 +59,47 @@ class SoundService {
       
       const lfo = this.ctx!.createOscillator();
       const lfoGain = this.ctx!.createGain();
-      lfo.frequency.setValueAtTime(0.15, this.ctx!.currentTime);
+      lfo.frequency.setValueAtTime(0.1, this.ctx!.currentTime);
       lfoGain.gain.setValueAtTime(4, this.ctx!.currentTime);
       lfo.connect(lfoGain);
       lfoGain.connect(osc.frequency);
       lfo.start();
     };
 
-    // 저음역대 드론 보강 (웅장함 강조)
-    createDrone(41.20, 0.12); // E1 (매우 낮은 베이스)
-    createDrone(82.41, 0.08, 5); // E2
-    createDrone(82.41, 0.08, -5); // E2 (살짝 튜닝을 틀어 코러스 효과)
-    createDrone(123.47, 0.05); // B2
-    createDrone(164.81, 0.04); // E3
+    // 웅장한 저음 레이어
+    createDrone(38.89, 0.15); // Eb1
+    createDrone(77.78, 0.1, 5); // Eb2
+    createDrone(77.78, 0.1, -5); 
+    createDrone(116.54, 0.08); // Bb2
+    createDrone(155.56, 0.05); // Eb3
 
-    // 무작위 별빛 소리
     const twinkle = () => {
       if (!this.isBgmPlaying) return;
-      const freqs = [880, 1046.50, 1318.51, 1567.98, 1760, 2093];
+      const freqs = [932.33, 1108.73, 1396.91, 1567.98, 1864.66];
       const f = freqs[Math.floor(Math.random() * freqs.length)];
-      this.createOscillator(f, 'sine', 6, 0.05);
-      setTimeout(twinkle, 1200 + Math.random() * 2500);
+      this.createOscillator(f, 'sine', 7, 0.07);
+      setTimeout(twinkle, 1000 + Math.random() * 2000);
     };
     twinkle();
   }
 
-  playScan() {
-    this.createOscillator(880, 'triangle', 0.2, 0.1); 
-    setTimeout(() => this.createOscillator(1760, 'triangle', 0.1, 0.06), 50);
-  }
-
-  playSageIntro() {
-    [440, 554.37, 659.25].forEach((freq, i) => {
-      setTimeout(() => this.createOscillator(freq, 'sine', 1.5, 0.12), i * 150);
-    });
-  }
-
-  playHighHint() {
-    this.createOscillator(660, 'sine', 0.3, 0.15);
-    setTimeout(() => this.createOscillator(520, 'sine', 0.2, 0.08), 100);
-  }
-
-  playLowHint() {
-    this.createOscillator(330, 'sine', 0.3, 0.15);
-    setTimeout(() => this.createOscillator(440, 'sine', 0.2, 0.08), 100);
-  }
-
-  playVictory() {
-    const freqs = [523.25, 659.25, 783.99, 1046.50];
-    freqs.forEach((f, i) => {
-      setTimeout(() => this.createOscillator(f, 'sine', 2, 0.15), i * 100);
-    });
-  }
-
-  playGameOver() {
+  playScan() { this.createOscillator(880, 'triangle', 0.2, 0.12); }
+  playReset() { this.createOscillator(440, 'sine', 1.2, 0.2); }
+  playHighHint() { this.createOscillator(660, 'sine', 0.5, 0.15); }
+  playLowHint() { this.createOscillator(330, 'sine', 0.5, 0.15); }
+  playVictory() { [523, 659, 783, 1046].forEach((f, i) => setTimeout(() => this.createOscillator(f, 'sine', 2, 0.2), i * 120)); }
+  playGameOver() { 
     this.initCtx();
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.frequency.setValueAtTime(220, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(55, this.ctx.currentTime + 1.5);
-    gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 1.5);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    const osc = this.ctx!.createOscillator();
+    const g = this.ctx!.createGain();
+    osc.frequency.setValueAtTime(200, this.ctx!.currentTime);
+    osc.frequency.linearRampToValueAtTime(40, this.ctx!.currentTime + 2);
+    g.gain.setValueAtTime(0.3, this.ctx!.currentTime);
+    g.gain.linearRampToValueAtTime(0, this.ctx!.currentTime + 2);
+    osc.connect(g);
+    g.connect(this.ctx!.destination);
     osc.start();
-    osc.stop(this.ctx.currentTime + 1.5);
-  }
-
-  playReset() {
-    this.initCtx();
-    if (!this.ctx) return;
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    osc.frequency.setValueAtTime(110, this.ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(440, this.ctx.currentTime + 0.8);
-    gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.8);
-    osc.connect(gain);
-    gain.connect(this.ctx.destination);
-    osc.start();
-    osc.stop(this.ctx.currentTime + 0.8);
+    osc.stop(this.ctx!.currentTime + 2);
   }
 }
 

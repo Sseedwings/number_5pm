@@ -4,7 +4,6 @@ import { SageResponse } from "../types";
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
-// Utility to decode base64 to Uint8Array
 function decode(base64: string) {
   const binaryString = atob(base64);
   const len = binaryString.length;
@@ -15,7 +14,6 @@ function decode(base64: string) {
   return bytes;
 }
 
-// PCM 데이터를 WAV 포맷으로 감싸는 함수 (HTMLAudioElement 재생용)
 function encodeWAV(samples: Int16Array, sampleRate: number) {
   const buffer = new ArrayBuffer(44 + samples.length * 2);
   const view = new DataView(buffer);
@@ -57,17 +55,11 @@ export const getSageFeedback = async (
   const isHigh = guess > target;
   
   const prompt = `
-    The user is playing a number guessing game (1-100).
-    The secret number is ${target}.
-    The user just guessed ${guess}. 
-    This is attempt number ${attemptCount}.
-    Previous guesses: ${history.join(', ')}.
-    Status: ${isCorrect ? 'Correct!' : isHigh ? 'Too high' : 'Too low'}.
-
-    Act as the "Nebula Sage", a mysterious psychic entity. 
-    Provide a short, mystical, and slightly playful commentary about their guess in KOREAN.
-    Use a mystical and formal tone (e.g., ~소, ~구려, ~도다).
-    Maximum 2 sentences.
+    The user is playing a number guessing game (1-100). Secret: ${target}, Guess: ${guess}, Attempt: ${attemptCount}.
+    Act as "The Nebula Sage" (성운의 현자). 
+    Provide mystical and brief feedback in KOREAN. 
+    Use formal/archaic tone (~소, ~구려, ~도다). 
+    Max 2 sentences.
   `;
 
   try {
@@ -75,13 +67,11 @@ export const getSageFeedback = async (
       model: 'gemini-3-flash-preview',
       contents: prompt,
     });
-    return { text: response.text || "우주의 에너지가 소용돌이치는구려..." };
+    return { text: response.text || "우주의 기운이 심상치 않구려..." };
   } catch (error) {
-    console.error("Gemini Error:", error);
     return { 
-      text: isCorrect ? "승리는 그대의 것이도다, 여행자여." : 
-            isHigh ? "그대의 에너지가 별들보다 너무 높이 솟구쳤구려." : 
-            "그대의 시야가 아직 지평선 아래에 머물러 있도다." 
+      text: isCorrect ? "승리는 그대의 것이도다." : 
+            isHigh ? "에너지가 너무 높이 솟구쳤소." : "시야가 너무 낮구려." 
     };
   }
 };
@@ -90,12 +80,11 @@ export const speakSageMessage = async (text: string) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `Deep and calm voice: ${text}` }] }], // 보이스 톤 유도를 위한 프롬프트 수정
+      contents: [{ parts: [{ text: `[Deep, calm, mystical male voice] ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            // 중저음의 신비로운 느낌을 위해 'Charon' 또는 'Fenrir' 보이스 사용 (Charon 추천)
             prebuiltVoiceConfig: { voiceName: 'Charon' },
           },
         },
@@ -117,17 +106,16 @@ export const speakSageMessage = async (text: string) => {
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
     
-    // 노이즈(클리핑) 방지 및 선명도 향상을 위한 다이내믹 컴프레서 추가
+    // 노이즈 제거를 위한 컴프레서 설정
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-24, audioCtx.currentTime);
-    compressor.knee.setValueAtTime(40, audioCtx.currentTime);
+    compressor.threshold.setValueAtTime(-30, audioCtx.currentTime);
+    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
     compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
-    compressor.attack.setValueAtTime(0, audioCtx.currentTime);
+    compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
     compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
 
     const gainNode = audioCtx.createGain();
-    // 클리핑을 피하면서 충분한 음량을 확보하기 위해 1.8 정도로 조절 (2.5는 노이즈 유발 가능성 높음)
-    gainNode.gain.value = 1.8; 
+    gainNode.gain.value = 2.0; // 명료한 전달을 위한 적정 볼륨
     
     source.connect(compressor);
     compressor.connect(gainNode);
@@ -136,8 +124,7 @@ export const speakSageMessage = async (text: string) => {
     audio.play();
     audio.onended = () => {
       URL.revokeObjectURL(url);
-      // 오디오 컨텍스트를 즉시 닫지 않고 약간의 여유를 둠
-      setTimeout(() => audioCtx.close(), 100);
+      setTimeout(() => audioCtx.close(), 200);
     };
   } catch (error) {
     console.error("TTS Error:", error);
