@@ -80,7 +80,7 @@ export const speakSageMessage = async (text: string) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `[Calm, deep mystical voice] ${text}` }] }],
+      contents: [{ parts: [{ text: `[Deep mystical wise voice] ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -100,45 +100,36 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    audio.playbackRate = 1.4; // 속도를 살짝 낮추어 왜곡 방지
+    audio.playbackRate = 1.4; 
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
     
-    // 1. 고주파 필터 (화이트 노이즈 억제)
+    // 1. 노이즈 제거용 필터 (5000Hz 이상 부드럽게 깎음)
     const lowpass = audioCtx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.setValueAtTime(5500, audioCtx.currentTime); 
+    lowpass.frequency.setValueAtTime(5000, audioCtx.currentTime); 
+    lowpass.Q.setValueAtTime(0.5, audioCtx.currentTime);
 
-    // 2. 저주파 보강 (묵직한 느낌 추가)
-    const lowshelf = audioCtx.createBiquadFilter();
-    lowshelf.type = 'lowshelf';
-    lowshelf.frequency.setValueAtTime(250, audioCtx.currentTime);
-    lowshelf.gain.setValueAtTime(4, audioCtx.currentTime);
-
-    // 3. 다이내믹 컴프레서 (볼륨 튀는 현상 방지)
+    // 2. 컴프레서 (소리가 튀는 피크 제거)
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-30, audioCtx.currentTime); 
-    compressor.knee.setValueAtTime(40, audioCtx.currentTime);
+    compressor.threshold.setValueAtTime(-32, audioCtx.currentTime); 
     compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
-    compressor.attack.setValueAtTime(0.005, audioCtx.currentTime);
-    compressor.release.setValueAtTime(0.2, audioCtx.currentTime);
 
-    // 4. 게인 조절 (클리핑 방지를 위해 안전한 0.6으로 설정)
+    // 3. 최종 게인 (노이즈 방지를 위해 0.55로 설정)
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.6; 
+    gainNode.gain.value = 0.55; 
     
     source.connect(lowpass);
-    lowpass.connect(lowshelf);
-    lowshelf.connect(compressor);
+    lowpass.connect(compressor);
     compressor.connect(gainNode);
     gainNode.connect(audioCtx.destination);
     
     audio.play();
     audio.onended = () => {
       URL.revokeObjectURL(url);
-      setTimeout(() => audioCtx.close(), 500);
+      setTimeout(() => audioCtx.close(), 1000);
     };
   } catch (error) {
     console.error("TTS Error:", error);

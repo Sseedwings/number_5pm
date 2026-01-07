@@ -6,7 +6,7 @@ import { soundService } from './services/soundService';
 import GuessChart from './components/GuessChart';
 
 const MAX_ATTEMPTS = 10;
-const APP_VERSION = "v1.2.7-final-check"; // 이 문구가 보이면 업데이트 성공입니다!
+const APP_VERSION = "v1.2.8-final"; // 이 문구가 보이면 최종 버전 반영 성공!
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
