@@ -100,7 +100,7 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    audio.playbackRate = 1.8;
+    audio.playbackRate = 1.6; // 약간 속도를 늦추어 아티팩트 감소
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -108,15 +108,15 @@ export const speakSageMessage = async (text: string) => {
     
     // 노이즈(클리핑) 제거를 위한 다이내믹 컴프레서 최적화
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-20, audioCtx.currentTime); // 너무 낮은 수치는 노이즈를 증폭하므로 -20으로 조정
-    compressor.knee.setValueAtTime(25, audioCtx.currentTime);
-    compressor.ratio.setValueAtTime(8, audioCtx.currentTime); // 압축비를 약간 낮추어 자연스럽게
-    compressor.attack.setValueAtTime(0.005, audioCtx.currentTime);
-    compressor.release.setValueAtTime(0.1, audioCtx.currentTime);
+    compressor.threshold.setValueAtTime(-12, audioCtx.currentTime); // 임계값을 높여 덜 억눌리게 함
+    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
+    compressor.ratio.setValueAtTime(4, audioCtx.currentTime); // 압축비를 낮추어 더 자연스럽게
+    compressor.attack.setValueAtTime(0.01, audioCtx.currentTime);
+    compressor.release.setValueAtTime(0.2, audioCtx.currentTime);
 
     const gainNode = audioCtx.createGain();
-    // 클리핑 임계값을 넘지 않도록 1.6 정도로 조정 (2.0은 소스에 따라 왜곡 발생 가능)
-    gainNode.gain.value = 1.6; 
+    // 왜곡 방지를 위해 게인을 1.2로 하향 조정
+    gainNode.gain.value = 1.2; 
     
     source.connect(compressor);
     compressor.connect(gainNode);
