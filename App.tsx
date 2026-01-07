@@ -6,7 +6,7 @@ import { soundService } from './services/soundService';
 import GuessChart from './components/GuessChart';
 
 const MAX_ATTEMPTS = 10;
-const APP_VERSION = "v12.0.0-AUTO-READY"; 
+const APP_VERSION = "v13.0.0-PRODUCTION-STABLE"; 
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -28,7 +28,7 @@ const App: React.FC = () => {
     }
   }, [gameState.guesses]);
 
-  // 브라우저 정책상 첫 상호작용 시 오디오 시작
+  // 브라우저 정책상 첫 상호작용 시 오디오 및 API 연동 시작
   const ensureAudio = async () => {
     if (!isBgmStarted) {
       soundService.startBGM();
@@ -38,7 +38,9 @@ const App: React.FC = () => {
         const feedback = await getSageFeedback(0, gameState.target, 0, []);
         setGameState(prev => ({ ...prev, message: feedback.text }));
         speakSageMessage(feedback.text);
-      } catch (e) { console.error(e); }
+      } catch (e) { 
+        console.error("Sage connection error:", e); 
+      }
     }
   };
 
@@ -154,7 +156,6 @@ const App: React.FC = () => {
             </div>
             <div className="flex-1 text-center md:text-left overflow-hidden">
               <div className="mb-2 text-[9px] text-cyan-500/40 font-black tracking-[0.4em] uppercase">Sage Signal</div>
-              {/* 글씨 크기를 작게 조절 (text-base) 하여 한눈에 들어오도록 개선 */}
               <p className={`text-base md:text-lg leading-relaxed font-medium italic font-noto transition-colors duration-500 ${feedbackStyles.text}`}>
                 "{gameState.message}"
               </p>
@@ -216,7 +217,7 @@ const App: React.FC = () => {
           <div className="h-[1px] bg-slate-900 flex-1 mx-12"></div>
           <div className="flex gap-4 items-center">
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></div>
-            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">AUTO-READY ACTIVE</p>
+            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">DEPLOY: STABLE</p>
           </div>
         </footer>
       </div>
