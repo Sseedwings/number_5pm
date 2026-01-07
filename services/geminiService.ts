@@ -51,7 +51,7 @@ export const getSageFeedback = async (
   attemptCount: number,
   history: number[]
 ): Promise<{ text: string }> => {
-  // 호출 시점에 새 인스턴스 생성 (최신 API 키 보장)
+  // 호출 시점에 새 인스턴스 생성 (Vercel 환경 변수 참조 보장)
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   
   const isCorrect = guess === target;
@@ -85,15 +85,15 @@ export const getSageFeedback = async (
 
 /**
  * 성운의 현자 목소리로 텍스트를 음성 변환합니다.
+ * 나레이션 속도를 더 빠르게 조정하였습니다.
  */
 export const speakSageMessage = async (text: string) => {
   try {
-    // 호출 시점에 새 인스턴스 생성
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `[Mystical ancient voice, deep and resonant, slightly slow] ${text}` }] }],
+      contents: [{ parts: [{ text: `[Mystical ancient voice, deep and resonant] ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -113,7 +113,8 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    audio.playbackRate = 1.2; // 약간 빠르게 설정하여 명료함 유지
+    // 나레이션 속도를 1.6으로 상향 조정 (사용자 요청: 더 빠르게)
+    audio.playbackRate = 1.6; 
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -121,14 +122,14 @@ export const speakSageMessage = async (text: string) => {
     
     const lowpass = audioCtx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.setValueAtTime(4200, audioCtx.currentTime); 
+    lowpass.frequency.setValueAtTime(4500, audioCtx.currentTime); 
 
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-45, audioCtx.currentTime); 
+    compressor.threshold.setValueAtTime(-40, audioCtx.currentTime); 
     compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
 
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.5; // 출력 안정성
+    gainNode.gain.value = 0.55; 
     
     source.connect(lowpass);
     lowpass.connect(compressor);
