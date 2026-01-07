@@ -64,7 +64,7 @@ export const getSageFeedback = async (
     Previous guesses: ${history.join(', ')}.
     Status: ${isCorrect ? 'Correct!' : isHigh ? 'Too high' : 'Too low'}.
 
-    Act as the "Nebula Sage", a mysterious psychic entity living in a digital nebula. 
+    Act as the "Nebula Sage", a mysterious psychic entity. 
     Provide a short, mystical, and slightly playful commentary about their guess in KOREAN.
     Use a mystical and formal tone (e.g., ~소, ~구려, ~도다).
     Maximum 2 sentences.
@@ -90,12 +90,13 @@ export const speakSageMessage = async (text: string) => {
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text }] }],
+      contents: [{ parts: [{ text: `Deep and calm voice: ${text}` }] }], // 보이스 톤 유도를 위한 프롬프트 수정
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
           voiceConfig: {
-            prebuiltVoiceConfig: { voiceName: 'Kore' },
+            // 중저음의 신비로운 느낌을 위해 'Charon' 또는 'Fenrir' 보이스 사용 (Charon 추천)
+            prebuiltVoiceConfig: { voiceName: 'Charon' },
           },
         },
       },
@@ -110,25 +111,33 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    // 피치를 유지하면서 속도만 1.8배로 올림
     audio.playbackRate = 1.8;
     (audio as any).preservesPitch = true; 
     
-    // 볼륨 증폭을 위한 Web Audio API 연결
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
+    
+    // 노이즈(클리핑) 방지 및 선명도 향상을 위한 다이내믹 컴프레서 추가
+    const compressor = audioCtx.createDynamicsCompressor();
+    compressor.threshold.setValueAtTime(-24, audioCtx.currentTime);
+    compressor.knee.setValueAtTime(40, audioCtx.currentTime);
+    compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
+    compressor.attack.setValueAtTime(0, audioCtx.currentTime);
+    compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+
     const gainNode = audioCtx.createGain();
+    // 클리핑을 피하면서 충분한 음량을 확보하기 위해 1.8 정도로 조절 (2.5는 노이즈 유발 가능성 높음)
+    gainNode.gain.value = 1.8; 
     
-    // 나레이션 볼륨을 대폭 증폭 (기존 대비 2.5배)
-    gainNode.gain.value = 2.5; 
-    
-    source.connect(gainNode);
+    source.connect(compressor);
+    compressor.connect(gainNode);
     gainNode.connect(audioCtx.destination);
     
     audio.play();
     audio.onended = () => {
       URL.revokeObjectURL(url);
-      audioCtx.close();
+      // 오디오 컨텍스트를 즉시 닫지 않고 약간의 여유를 둠
+      setTimeout(() => audioCtx.close(), 100);
     };
   } catch (error) {
     console.error("TTS Error:", error);
