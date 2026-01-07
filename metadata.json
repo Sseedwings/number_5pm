@@ -1,0 +1,7 @@
+{
+  "name": "성운의 현자: 숫자 탐구",
+  "description": "제미나이(Gemini) AI의 고급 TTS 기능을 활용하여 신비로운 현자가 힌트와 피드백을 제공하는 몰입형 숫자 맞추기 게임입니다.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
