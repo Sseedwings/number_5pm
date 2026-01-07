@@ -6,7 +6,7 @@ import { soundService } from './services/soundService';
 import GuessChart from './components/GuessChart';
 
 const MAX_ATTEMPTS = 10;
-const APP_VERSION = "v1.2.0-final-audio"; // 업데이트 확인용 버전
+const APP_VERSION = "v1.2.2-stable"; // 업데이트 확인용 버전
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -101,6 +101,12 @@ const App: React.FC = () => {
     speakSageMessage(feedback.text);
   };
 
+  const lastGuess = gameState.guesses[gameState.guesses.length - 1];
+  const feedbackStyles = !lastGuess ? { border: 'border-white/5', text: 'text-slate-200', glow: '' } : 
+    lastGuess.direction === 'high' ? { border: 'border-orange-500/50 shadow-[0_0_20px_rgba(249,115,22,0.2)]', text: 'text-orange-400', glow: 'bg-orange-500/10' } :
+    lastGuess.direction === 'low' ? { border: 'border-cyan-500/50 shadow-[0_0_20px_rgba(6,182,212,0.2)]', text: 'text-cyan-400', glow: 'bg-cyan-500/10' } :
+    { border: 'border-green-500/50 shadow-[0_0_20px_rgba(34,197,94,0.2)]', text: 'text-green-400', glow: 'bg-green-500/10' };
+
   return (
     <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 selection:bg-cyan-500/30">
       <div className="w-full max-w-2xl">
@@ -143,8 +149,8 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* AI Voice Box */}
-            <div className={`relative flex gap-5 items-center mb-10 bg-slate-900/60 p-6 rounded-2xl border transition-all duration-500 ${isProcessing ? 'border-cyan-500/50 bg-slate-900' : 'border-white/5'}`}>
+            {/* AI Voice Box - Color Coded */}
+            <div className={`relative flex gap-5 items-center mb-10 p-6 rounded-2xl border transition-all duration-700 ${feedbackStyles.border} ${feedbackStyles.glow || 'bg-slate-900/60'}`}>
               <div className="relative flex-shrink-0">
                 <div className={`w-20 h-20 rounded-full bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center shadow-xl border-2 border-white/10 ${isProcessing ? 'animate-spin-slow' : 'animate-pulse'}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-white/90" viewBox="0 0 20 20" fill="currentColor">
@@ -154,7 +160,7 @@ const App: React.FC = () => {
                 {isProcessing && <div className="absolute inset-0 rounded-full border-2 border-cyan-400 animate-ping opacity-25"></div>}
               </div>
               <div className="flex-1">
-                <p className="text-lg text-slate-200 leading-relaxed font-medium italic drop-shadow-sm font-noto">
+                <p className={`text-lg leading-relaxed font-medium italic drop-shadow-sm font-noto transition-colors duration-500 ${feedbackStyles.text}`}>
                   "{gameState.message}"
                 </p>
               </div>
@@ -172,7 +178,7 @@ const App: React.FC = () => {
                   onChange={(e) => setCurrentInput(e.target.value)}
                   placeholder="추측 숫자를 입력하시오..."
                   disabled={isProcessing}
-                  className="flex-1 bg-slate-800/50 border-2 border-white/5 rounded-2xl px-6 py-4 text-2xl font-orbitron text-white focus:outline-none focus:border-cyan-500 focus:bg-slate-800 transition-all placeholder:text-slate-600"
+                  className={`flex-1 bg-slate-800/50 border-2 rounded-2xl px-6 py-4 text-2xl font-orbitron text-white focus:outline-none transition-all placeholder:text-slate-600 ${lastGuess?.direction === 'high' ? 'border-orange-500/30' : lastGuess?.direction === 'low' ? 'border-cyan-500/30' : 'border-white/5'}`}
                 />
                 <button
                   type="submit"
@@ -184,7 +190,7 @@ const App: React.FC = () => {
               </form>
             ) : (
               <div className="text-center p-8 bg-white/5 rounded-3xl border border-white/10 backdrop-blur-sm">
-                <h2 className={`text-4xl font-black mb-3 ${gameState.status === 'won' ? 'text-cyan-400' : 'text-rose-500'}`}>
+                <h2 className={`text-4xl font-black mb-3 ${gameState.status === 'won' ? 'text-green-400' : 'text-rose-500'}`}>
                   {gameState.status === 'won' ? 'ASCENSION COMPLETE' : 'FREQUENCY LOST'}
                 </h2>
                 <p className="text-slate-400 mb-8 text-lg font-medium">진실의 숫자는 <span className="text-white text-2xl font-bold ml-2 underline decoration-cyan-500">{gameState.target}</span> 이었소.</p>

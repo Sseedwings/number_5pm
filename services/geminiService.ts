@@ -106,16 +106,17 @@ export const speakSageMessage = async (text: string) => {
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
     const source = audioCtx.createMediaElementSource(audio);
     
-    // 노이즈 제거를 위한 컴프레서 설정
+    // 노이즈(클리핑) 제거를 위한 다이내믹 컴프레서 최적화
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-30, audioCtx.currentTime);
-    compressor.knee.setValueAtTime(30, audioCtx.currentTime);
-    compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
-    compressor.attack.setValueAtTime(0.003, audioCtx.currentTime);
-    compressor.release.setValueAtTime(0.25, audioCtx.currentTime);
+    compressor.threshold.setValueAtTime(-20, audioCtx.currentTime); // 너무 낮은 수치는 노이즈를 증폭하므로 -20으로 조정
+    compressor.knee.setValueAtTime(25, audioCtx.currentTime);
+    compressor.ratio.setValueAtTime(8, audioCtx.currentTime); // 압축비를 약간 낮추어 자연스럽게
+    compressor.attack.setValueAtTime(0.005, audioCtx.currentTime);
+    compressor.release.setValueAtTime(0.1, audioCtx.currentTime);
 
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 2.0; // 명료한 전달을 위한 적정 볼륨
+    // 클리핑 임계값을 넘지 않도록 1.6 정도로 조정 (2.0은 소스에 따라 왜곡 발생 가능)
+    gainNode.gain.value = 1.6; 
     
     source.connect(compressor);
     compressor.connect(gainNode);
