@@ -41,26 +41,31 @@ function encodeWAV(samples: Int16Array, sampleRate: number) {
   return new Blob([view], { type: 'audio/wav' });
 }
 
+/**
+ * 성운의 현자로부터 텍스트 피드백을 생성합니다.
+ * Vercel 환경 변수인 process.env.API_KEY를 자동으로 사용합니다.
+ */
 export const getSageFeedback = async (
   guess: number, 
   target: number, 
   attemptCount: number,
   history: number[]
 ): Promise<{ text: string }> => {
-  // 호출 시점에 인스턴스 생성 (Vercel 환경 변수 참조 최적화)
+  // 호출 시점에 새 인스턴스 생성 (최신 API 키 보장)
   const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
   
   const isCorrect = guess === target;
   const isHigh = guess > target;
+  const isStart = attemptCount === 0;
   
-  const prompt = `
-    The user is playing a number guessing game (1-100). Secret: ${target}, Guess: ${guess}, Attempt: ${attemptCount}.
+  const prompt = isStart 
+    ? `Act as "The Nebula Sage" (성운의 현자). User just entered the realm. Greet them mystically in KOREAN. Formal/archaic tone (~소, ~구려, ~도다). Max 2 sentences.`
+    : `The user is playing a number guessing game (1-100). Secret: ${target}, Guess: ${guess}, Attempt: ${attemptCount}.
     Act as "The Nebula Sage" (성운의 현자). 
     Provide mystical and brief feedback in KOREAN. 
     Use formal/archaic tone (~소, ~구려, ~도다). 
     Max 2 sentences. 
-    Keep it wise and mysterious.
-  `;
+    Keep it wise and mysterious.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -70,6 +75,7 @@ export const getSageFeedback = async (
     return { text: response.text || "우주의 기운이 심상치 않구려..." };
   } catch (error) {
     console.error("Gemini API Error:", error);
+    if (isStart) return { text: "성운의 입구에 오신 것을 환영하오. 숫자 탐구를 시작해보세." };
     return { 
       text: isCorrect ? "승리는 그대의 것이도다." : 
             isHigh ? "에너지가 너무 높이 솟구쳤소." : "시야가 너무 낮구려." 
@@ -77,14 +83,17 @@ export const getSageFeedback = async (
   }
 };
 
+/**
+ * 성운의 현자 목소리로 텍스트를 음성 변환합니다.
+ */
 export const speakSageMessage = async (text: string) => {
   try {
-    // 호출 시점에 인스턴스 생성
+    // 호출 시점에 새 인스턴스 생성
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
-      contents: [{ parts: [{ text: `[Mystical ancient voice, deep and resonant] ${text}` }] }],
+      contents: [{ parts: [{ text: `[Mystical ancient voice, deep and resonant, slightly slow] ${text}` }] }],
       config: {
         responseModalities: [Modality.AUDIO],
         speechConfig: {
@@ -104,7 +113,7 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    audio.playbackRate = 1.3; 
+    audio.playbackRate = 1.2; // 약간 빠르게 설정하여 명료함 유지
     (audio as any).preservesPitch = true; 
     
     const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
@@ -112,14 +121,14 @@ export const speakSageMessage = async (text: string) => {
     
     const lowpass = audioCtx.createBiquadFilter();
     lowpass.type = 'lowpass';
-    lowpass.frequency.setValueAtTime(4000, audioCtx.currentTime); 
+    lowpass.frequency.setValueAtTime(4200, audioCtx.currentTime); 
 
     const compressor = audioCtx.createDynamicsCompressor();
-    compressor.threshold.setValueAtTime(-40, audioCtx.currentTime); 
+    compressor.threshold.setValueAtTime(-45, audioCtx.currentTime); 
     compressor.ratio.setValueAtTime(12, audioCtx.currentTime);
 
     const gainNode = audioCtx.createGain();
-    gainNode.gain.value = 0.45; 
+    gainNode.gain.value = 0.5; // 출력 안정성
     
     source.connect(lowpass);
     lowpass.connect(compressor);
