@@ -5,8 +5,8 @@ import { soundService } from './services/soundService';
 import GuessChart from './components/GuessChart';
 
 const MAX_ATTEMPTS = 10;
-// 배포가 정상적으로 반영되었는지 확인하기 위해 버전을 v15.0.0으로 업데이트합니다.
-const APP_VERSION = "v15.0.0-FINAL-VERIFIED"; 
+// 배포가 정상적으로 반영되었는지 확인하기 위해 버전을 v16.0.0으로 업데이트합니다.
+const APP_VERSION = "v16.0.0-PRO-ROBUST"; 
 
 const App: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>({
@@ -82,6 +82,7 @@ const App: React.FC = () => {
     const hasLost = !hasWon && updatedGuesses.length >= gameState.maxAttempts;
     const newStatus = hasWon ? 'won' : (hasLost ? 'lost' : 'playing');
 
+    // 피드백 요청
     const feedback = await getSageFeedback(
       guessVal, 
       gameState.target, 
@@ -106,6 +107,7 @@ const App: React.FC = () => {
       else soundService.playLowHint();
     }
 
+    // TTS 음성 출력 (내부적으로 Quota 에러 발생 시 무시됨)
     speakSageMessage(feedback.text);
   };
 
@@ -156,7 +158,6 @@ const App: React.FC = () => {
             </div>
             <div className="flex-1 text-center md:text-left overflow-hidden">
               <div className="mb-2 text-[9px] text-cyan-500/40 font-black tracking-[0.4em] uppercase">Sage Signal</div>
-              {/* 자막 크기를 작게 조절 (text-sm md:text-base) */}
               <p className={`text-sm md:text-base leading-relaxed font-medium italic font-noto transition-colors duration-500 ${feedbackStyles.text}`}>
                 "{gameState.message}"
               </p>
@@ -218,7 +219,7 @@ const App: React.FC = () => {
           <div className="h-[1px] bg-slate-900 flex-1 mx-12"></div>
           <div className="flex gap-4 items-center">
             <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 shadow-[0_0_10px_cyan]"></div>
-            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">VERSION: 15.0.0 FINAL</p>
+            <p className="text-[10px] font-black tracking-[0.5em] uppercase text-cyan-500">VERSION: 16.0.0 PRO</p>
           </div>
         </footer>
       </div>

@@ -1,6 +1,4 @@
-
 import { GoogleGenAI, Modality } from "@google/genai";
-import { SageResponse } from "../types";
 
 // 유틸리티: Base64 디코딩
 function decode(base64: string) {
@@ -42,6 +40,32 @@ function encodeWAV(samples: Int16Array, sampleRate: number) {
 }
 
 /**
+ * 지수 백오프를 포함한 재시도 헬퍼 함수
+ */
+const retry = async <T>(fn: () => Promise<T>, maxRetries = 2): Promise<T> => {
+  let lastError: any;
+  for (let i = 0; i <= maxRetries; i++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      // 429(Quota) 또는 500(Internal) 에러인 경우 재시도
+      const isRetryable = error?.status === 429 || error?.status === 500 || 
+                         error?.message?.includes("500") || error?.message?.includes("429");
+      
+      if (i < maxRetries && isRetryable) {
+        const delay = 1500 * (i + 1);
+        console.warn(`API error (${error?.status}). Retrying in ${delay}ms... (Attempt ${i + 1}/${maxRetries})`);
+        await new Promise(r => setTimeout(r, delay));
+        continue;
+      }
+      break;
+    }
+  }
+  throw lastError;
+};
+
+/**
  * 성운의 현자로부터 텍스트 피드백을 생성합니다.
  */
 export const getSageFeedback = async (
@@ -66,13 +90,13 @@ export const getSageFeedback = async (
     Keep it wise and mysterious.`;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await retry(() => ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: prompt,
-    });
+    }));
     return { text: response.text || "우주의 기운이 심상치 않구려..." };
   } catch (error) {
-    console.error("Gemini API Error:", error);
+    console.error("Gemini API Error (Text):", error);
     if (isStart) return { text: "성운의 입구에 오신 것을 환영하오." };
     return { 
       text: isCorrect ? "승리는 그대의 것이도다." : 
@@ -83,13 +107,12 @@ export const getSageFeedback = async (
 
 /**
  * 성운의 현자 목소리로 텍스트를 음성 변환합니다.
- * 나레이션 속도를 2.0으로 상향 조정하였습니다.
  */
 export const speakSageMessage = async (text: string) => {
   try {
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || "" });
 
-    const response = await ai.models.generateContent({
+    const response = await retry(() => ai.models.generateContent({
       model: "gemini-2.5-flash-preview-tts",
       contents: [{ parts: [{ text: `[Mystical ancient voice, deep and resonant] ${text}` }] }],
       config: {
@@ -100,7 +123,7 @@ export const speakSageMessage = async (text: string) => {
           },
         },
       },
-    });
+    }));
 
     const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
     if (!base64Audio) return;
@@ -111,7 +134,6 @@ export const speakSageMessage = async (text: string) => {
     const url = URL.createObjectURL(wavBlob);
 
     const audio = new Audio(url);
-    // 나레이션 속도 2.0 (매우 빠름)
     audio.playbackRate = 2.0; 
     (audio as any).preservesPitch = true; 
     
@@ -140,6 +162,7 @@ export const speakSageMessage = async (text: string) => {
       setTimeout(() => audioCtx.close(), 1000);
     };
   } catch (error) {
-    console.error("TTS Error:", error);
+    // TTS 에러(주로 할당량 초과)는 경고만 띄우고 게임은 계속 진행되도록 함
+    console.warn("TTS Service currently unavailable (likely quota exceeded).", error);
   }
 };
